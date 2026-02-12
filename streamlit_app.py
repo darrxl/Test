@@ -344,7 +344,19 @@ for row_start in range(0, len(key_factors), 3):
         with col: 
             # Render factor card 
             trend_color = color if trend == "IMPROVING" else "#c33" 
-            st.markdown( f'<div style="margin:12px;"><div class="card"><div class="muted">{name}</div><div class="score">{score}/100</div><div class="muted">Report trend: <b style="color:{trend_color}">{trend}</b></div></div></div>', unsafe_allow_html=True, )
+            # st.markdown(f'<div style="margin:12px;"><div class="card"><div class="muted">{name}</div><div class="score">{score}/100</div><div class="muted">Report trend: <b style="color:{trend_color}">{trend}</b></div></div></div>', unsafe_allow_html=True, )
+            
+            st.markdown(f"""
+            <a href="?card={name}" style="text-decoration:none;">
+            <div style="margin:12px; padding:12px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.1); background-color:#f9f9f9; color:black;">
+                <div style="font-size:14px; color:#555;">{name}</div>
+                <div style="font-size:20px; font-weight:bold;">{score}/100</div>
+                <div style="font-size:12px; color:#777;">
+                    Report trend: <b style="color:{trend_color};">{trend}</b>
+                </div>
+            </div>
+            </a>
+            """, unsafe_allow_html=True)
 
 # GDP visualization section
 
