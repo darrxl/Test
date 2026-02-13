@@ -1,6 +1,7 @@
 import streamlit as st
+from st_pages import add_page_title, get_nav_from_toml
 import pandas as pd
-import numpy as np
+import datetime
 import math
 import matplotlib.pyplot as plt
 import io
@@ -133,7 +134,7 @@ def get_gdp_data():
     return gdp_df
 
 
-def load_readiness_from_excel(excel_path, unit_choice=None):
+def load_readiness_from_excel(excel_path, brigade_choice=None):
     """Load readiness values from an Excel workbook.
 
     Expected workbook format:
@@ -149,7 +150,7 @@ def load_readiness_from_excel(excel_path, unit_choice=None):
         return None, None
 
     # Filter sheets by unit if present
-    if unit_choice is not None:
+    if brigade_choice is not None:
         overall_cols_map = {c.lower(): c for c in overall_df.columns}
         kf_cols_map = {c.lower(): c for c in kf_df.columns}
 
@@ -157,9 +158,9 @@ def load_readiness_from_excel(excel_path, unit_choice=None):
         kf_has_unit = 'unit' in kf_cols_map
 
         if overall_has_unit:
-            overall_df = overall_df[overall_df[overall_cols_map['unit']].astype(str) == str(unit_choice)]
+            overall_df = overall_df[overall_df[overall_cols_map['unit']].astype(str) == str(brigade_choice)]
         if kf_has_unit:
-            kf_df = kf_df[kf_df[kf_cols_map['unit']].astype(str) == str(unit_choice)]
+            kf_df = kf_df[kf_df[kf_cols_map['unit']].astype(str) == str(brigade_choice)]
 
         # Return no data if both sheets filtered to empty
         if (overall_has_unit or kf_has_unit) and overall_df.empty and kf_df.empty:
@@ -175,8 +176,8 @@ def load_readiness_from_excel(excel_path, unit_choice=None):
 
         # Select row by unit or use first row
         row = None
-        if unit_col is not None and unit_choice is not None:
-            matched = overall_df[overall_df[unit_col].astype(str) == str(unit_choice)]
+        if unit_col is not None and brigade_choice is not None:
+            matched = overall_df[overall_df[unit_col].astype(str) == str(brigade_choice)]
             if not matched.empty:
                 row = matched.iloc[0]
 
@@ -223,8 +224,8 @@ def load_readiness_from_excel(excel_path, unit_choice=None):
         color_col = cols_map.get('color') or cols_map.get('colour')
 
         df_kf = kf_df
-        if unit_col is not None and unit_choice is not None:
-            df_kf = df_kf[df_kf[unit_col].astype(str) == str(unit_choice)]
+        if unit_col is not None and brigade_choice is not None:
+            df_kf = df_kf[df_kf[unit_col].astype(str) == str(brigade_choice)]
 
         for _, r in df_kf.iterrows():
             try:
@@ -253,19 +254,23 @@ st.write("")
 # Load GDP data
 gdp_df = get_gdp_data()
 
-# Unit selector
-unit_choice = st.sidebar.selectbox(
-    'Select Unit',
-    ('1 SIR', '2 SIR', '3 SIR', '5 SIR'),
+# =========================
+# UNIT SELECTOR
+# =========================
+brigade_choice = st.sidebar.selectbox(
+    'Select Brigades',
+    ('3 SIB', '5 SIB', '24 SIB'),
     index=0,
 )
-_unit_map = {'1 SIR': 1e12, '2 SIR': 1e9, '3 SIR': 1e6, '5 SIR': 1}
-unit_scale = _unit_map[unit_choice]
-_suffix_map = {'1 SIR': 'T', '2 SIR': 'B', '3 SIR': 'M', '5 SIR': ''}
+_brigade_map = {'3 SIB': 1e12, '5 SIB': 1e9, '24 SIB': 1e6}
+unit_scale = _brigade_map[brigade_choice]
+_suffix_map = {'3 SIB': 'T', '5 SIB': 'B', '24 SIB': 'M'}
 
-unit_suffix = _suffix_map[unit_choice]
+unit_suffix = _suffix_map[brigade_choice]
 
-# File upload widget
+# =========================
+# FILE UPLOAD
+# =========================
 uploaded_file = st.sidebar.file_uploader(
     'Upload Data File',
     type=['xlsx', 'xls'],
@@ -287,7 +292,7 @@ if uploaded_file is not None:
 # Load readiness data
 excel_path = Path(__file__).parent / 'data' / 'readiness.xlsx'
 if excel_path.exists():
-    loaded_overall, loaded_kf = load_readiness_from_excel(excel_path, unit_choice=unit_choice)
+    loaded_overall, loaded_kf = load_readiness_from_excel(excel_path, brigade_choice=brigade_choice)
 
     # Override defaults with loaded data
     if loaded_overall is not None:
@@ -306,7 +311,7 @@ if excel_path.exists():
 
 # Display readiness score
 score = int(readiness_score) if 'readiness_score' in locals() else 0
-st.header(f"{unit_choice}'s Readiness: {score} / 100")
+st.header(f"{brigade_choice}'s Readiness: {score} / 100")
 
 # Color-code by score range
 if score <= 49:
@@ -337,6 +342,7 @@ st.session_state['prev_readiness_score'] = score
 # GRID VIEW
 # =========================
 st.header('Key Factors', divider='gray') 
+
 for row_start in range(0, len(key_factors), 3): 
     cols = st.columns(3) 
     for i, (name, score, trend, color) in enumerate(key_factors[row_start:row_start+3]): 
@@ -347,7 +353,7 @@ for row_start in range(0, len(key_factors), 3):
             # st.markdown(f'<div style="margin:12px;"><div class="card"><div class="muted">{name}</div><div class="score">{score}/100</div><div class="muted">Report trend: <b style="color:{trend_color}">{trend}</b></div></div></div>', unsafe_allow_html=True, )
             
             st.markdown(f"""
-            <a href="?card={name}" style="text-decoration:none;">
+            <a href="#{name}" style="text-decoration:none;">
             <div style="margin:12px; padding:12px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.1); background-color:#f9f9f9; color:black;">
                 <div style="font-size:14px; color:#555;">{name}</div>
                 <div style="font-size:20px; font-weight:bold;">{score}/100</div>
@@ -357,6 +363,9 @@ for row_start in range(0, len(key_factors), 3):
             </div>
             </a>
             """, unsafe_allow_html=True)
+            
+            
+###################################################################################
 
 # GDP visualization section
 
@@ -414,10 +423,10 @@ st.line_chart(
 st.write("")
 st.write("")
 
-
 first_year = gdp_df[gdp_df['Year'] == from_year]
 last_year = gdp_df[gdp_df['Year'] == to_year]
 
+st.markdown('<a name="gdp_section"></a>', unsafe_allow_html=True)
 st.header(f'GDP in {to_year}', divider='gray')
 
 st.write("")
@@ -440,7 +449,118 @@ for i, country in enumerate(selected_countries):
             delta_color = 'normal'
 
         st.metric(
-            label=f'{country} GDP ({unit_choice})',
+            label=f'{country} GDP ({brigade_choice})',
+            value=f'{last_gdp:,.0f}{unit_suffix}',
+            delta=growth,
+            delta_color=delta_color,
+        )
+        
+        
+#############################################################################        
+
+st.markdown('<div style="padding-top:50px;" id="Manpower"></div>', unsafe_allow_html=True)
+st.header(f'Manpower on {datetime.date.today()}', divider='gray')
+
+cols = st.columns(4)
+
+for i, country in enumerate(selected_countries):
+    col = cols[i % len(cols)]
+
+    with col:
+        # Get GDP for country/year (assumes row exists)
+        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / unit_scale
+        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / unit_scale
+
+        if math.isnan(first_gdp):
+            growth = 'n/a'
+            delta_color = 'off'
+        else:
+            growth = f'{last_gdp / first_gdp:,.2f}x'
+            delta_color = 'normal'
+
+        st.metric(
+            label=f'{country} GDP ({brigade_choice})',
+            value=f'{last_gdp:,.0f}{unit_suffix}',
+            delta=growth,
+            delta_color=delta_color,
+        )
+        
+st.markdown('<div style="padding-top:50px;" id="Equipment"></div>', unsafe_allow_html=True)
+st.header(f'Equipment on {datetime.date.today()}', divider='gray')
+
+cols = st.columns(4)
+
+for i, country in enumerate(selected_countries):
+    col = cols[i % len(cols)]
+
+    with col:
+        # Get GDP for country/year (assumes row exists)
+        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / unit_scale
+        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / unit_scale
+
+        if math.isnan(first_gdp):
+            growth = 'n/a'
+            delta_color = 'off'
+        else:
+            growth = f'{last_gdp / first_gdp:,.2f}x'
+            delta_color = 'normal'
+
+        st.metric(
+            label=f'{country} GDP ({brigade_choice})',
+            value=f'{last_gdp:,.0f}{unit_suffix}',
+            delta=growth,
+            delta_color=delta_color,
+        )
+        
+st.markdown('<div style="padding-top:50px;" id="Training"></div>', unsafe_allow_html=True)
+st.header(f'Training on {datetime.date.today()}', divider='gray')
+
+cols = st.columns(4)
+
+for i, country in enumerate(selected_countries):
+    col = cols[i % len(cols)]
+
+    with col:
+        # Get GDP for country/year (assumes row exists)
+        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / unit_scale
+        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / unit_scale
+
+        if math.isnan(first_gdp):
+            growth = 'n/a'
+            delta_color = 'off'
+        else:
+            growth = f'{last_gdp / first_gdp:,.2f}x'
+            delta_color = 'normal'
+
+        st.metric(
+            label=f'{country} GDP ({brigade_choice})',
+            value=f'{last_gdp:,.0f}{unit_suffix}',
+            delta=growth,
+            delta_color=delta_color,
+        )
+        
+st.markdown('<div style="padding-top:50px;" id="Logistics"></div>', unsafe_allow_html=True)
+st.header(f'Logistics on {datetime.date.today()}', divider='gray')
+
+cols = st.columns(4)
+
+for i, country in enumerate(selected_countries):
+    col = cols[i % len(cols)]
+
+    with col:
+        # Get GDP for country/year (assumes row exists)
+        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / unit_scale
+        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / unit_scale
+
+        if math.isnan(first_gdp):
+            growth = 'n/a'
+            delta_color = 'off'
+        else:
+            growth = f'{last_gdp / first_gdp:,.2f}x'
+            delta_color = 'normal'
+
+        st.metric(
+            label=f'{country} GDP ({brigade_choice})',
             value=f'{last_gdp:,.0f}{unit_suffix}',
             delta=growth,
             delta_color=delta_color,
