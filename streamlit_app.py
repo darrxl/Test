@@ -149,21 +149,21 @@ def load_readiness_from_excel(excel_path, brigade_choice=None):
     except Exception:
         return None, None
 
-    # Filter sheets by unit if present
+    # Filter sheets by brigade if present
     if brigade_choice is not None:
         overall_cols_map = {c.lower(): c for c in overall_df.columns}
         kf_cols_map = {c.lower(): c for c in kf_df.columns}
 
-        overall_has_unit = 'unit' in overall_cols_map
-        kf_has_unit = 'unit' in kf_cols_map
+        overall_has_brigade = 'brigade' in overall_cols_map
+        kf_has_brigade = 'brigade' in kf_cols_map
 
-        if overall_has_unit:
-            overall_df = overall_df[overall_df[overall_cols_map['unit']].astype(str) == str(brigade_choice)]
-        if kf_has_unit:
-            kf_df = kf_df[kf_df[kf_cols_map['unit']].astype(str) == str(brigade_choice)]
+        if overall_has_brigade:
+            overall_df = overall_df[overall_df[overall_cols_map['brigade']].astype(str) == str(brigade_choice)]
+        if kf_has_brigade:
+            kf_df = kf_df[kf_df[kf_cols_map['brigade']].astype(str) == str(brigade_choice)]
 
         # Return no data if both sheets filtered to empty
-        if (overall_has_unit or kf_has_unit) and overall_df.empty and kf_df.empty:
+        if (overall_has_brigade or kf_has_brigade) and overall_df.empty and kf_df.empty:
             return None, None
 
     # Parse overall readiness
@@ -172,19 +172,19 @@ def load_readiness_from_excel(excel_path, brigade_choice=None):
         cols_map = {c.lower(): c for c in overall_df.columns}
         value_candidates = ['readiness', 'readiness_score', 'score', 'value', 'overall', 'overall_readiness']
 
-        unit_col = cols_map.get('unit')
+        brigade_col = cols_map.get('brigade')
 
-        # Select row by unit or use first row
+        # Select row by brigade or use first row
         row = None
-        if unit_col is not None and brigade_choice is not None:
-            matched = overall_df[overall_df[unit_col].astype(str) == str(brigade_choice)]
+        if brigade_col is not None and brigade_choice is not None:
+            matched = overall_df[overall_df[brigade_col].astype(str) == str(brigade_choice)]
             if not matched.empty:
                 row = matched.iloc[0]
 
         if row is None:
             row = overall_df.iloc[0]
 
-        # Find named column or fall back to first non-unit column
+        # Find named column or fall back to first non-brigade column
         for cand in value_candidates:
             col_name = cols_map.get(cand)
             if col_name is not None:
@@ -198,7 +198,7 @@ def load_readiness_from_excel(excel_path, brigade_choice=None):
 
         if overall_val is None:
             for c in overall_df.columns:
-                if c == unit_col:
+                if c == brigade_col:
                     continue
                 try:
                     v = row[c]
@@ -213,7 +213,7 @@ def load_readiness_from_excel(excel_path, brigade_choice=None):
     if isinstance(kf_df, pd.DataFrame) and not kf_df.empty:
         cols_map = {c.lower(): c for c in kf_df.columns}
 
-        unit_col = cols_map.get('unit')
+        brigade_col = cols_map.get('brigade')
         name_col = cols_map.get('name') or cols_map.get('factor') or list(kf_df.columns)[0]
         score_col = (
             cols_map.get('score')
@@ -224,8 +224,8 @@ def load_readiness_from_excel(excel_path, brigade_choice=None):
         color_col = cols_map.get('color') or cols_map.get('colour')
 
         df_kf = kf_df
-        if unit_col is not None and brigade_choice is not None:
-            df_kf = df_kf[df_kf[unit_col].astype(str) == str(brigade_choice)]
+        if brigade_col is not None and brigade_choice is not None:
+            df_kf = df_kf[df_kf[brigade_col].astype(str) == str(brigade_choice)]
 
         for _, r in df_kf.iterrows():
             try:
@@ -479,7 +479,7 @@ for i, country in enumerate(selected_countries):
             delta_color = 'normal'
 
         st.metric(
-            label=f'{country} GDP ({brigade_choice})',
+            label='Total Stength',
             value=f'{last_gdp:,.0f}{unit_suffix}',
             delta=growth,
             delta_color=delta_color,
